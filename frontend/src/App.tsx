@@ -24,6 +24,7 @@ import AdminProposals from "./pages/admin/Proposals";
 import Vendors from "./pages/admin/Vendors";
 import Verification from "./pages/admin/Verification";
 import Transparency from "./pages/admin/Transparency";
+import { EtherContextProvider } from "./context/EtherContext";
 
 const queryClient = new QueryClient();
 
@@ -65,14 +66,17 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Sonner />
-        <AuthProvider>
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </AuthProvider>
-      </TooltipProvider>
+      <EtherContextProvider>
+
+        <TooltipProvider>
+          <Sonner />
+          <AuthProvider>
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </AuthProvider>
+        </TooltipProvider>
+      </EtherContextProvider>
     </QueryClientProvider>
   );
 };
