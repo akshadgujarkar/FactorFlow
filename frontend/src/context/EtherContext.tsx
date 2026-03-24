@@ -30,6 +30,7 @@ type EthereumProviderWithEvents = Eip1193Provider & {
 interface EtherContextType {
   contractAddress: string;
   isConnected: boolean;
+  isHydrated: boolean;
   walletAddress: string | null;
   chainId: number | null;
   connectWallet: () => Promise<string>;
@@ -83,6 +84,7 @@ export const EtherContextProvider = ({ children }: { children: ReactNode }) => {
   const [provider, setProvider] = useState<BrowserProvider | null>(null);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [chainId, setChainId] = useState<number | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   const assertEnvironment = useCallback(() => {
     if (!window.ethereum) throw new Error("MetaMask not detected");
@@ -292,7 +294,10 @@ export const EtherContextProvider = ({ children }: { children: ReactNode }) => {
   );
 
   useEffect(() => {
-    if (!window.ethereum) return;
+    if (!window.ethereum) {
+      setIsHydrated(true);
+      return;
+    }
 
     const eth = window.ethereum as EthereumProviderWithEvents;
     const handleAccountsChanged = (accounts: string[]) => {
@@ -310,16 +315,31 @@ export const EtherContextProvider = ({ children }: { children: ReactNode }) => {
     eth.on?.("accountsChanged", handleAccountsChanged);
     eth.on?.("chainChanged", handleChainChanged);
 
+    (async () => {
+      try {
+        const p = await getProvider();
+        const accounts = (await p.send("eth_accounts", [])) as string[];
+        if (accounts.length > 0) {
+          setWalletAddress(ethers.getAddress(accounts[0]));
+          const network = await p.getNetwork();
+          setChainId(Number(network.chainId));
+        }
+      } finally {
+        setIsHydrated(true);
+      }
+    })();
+
     return () => {
       eth.removeListener?.("accountsChanged", handleAccountsChanged);
       eth.removeListener?.("chainChanged", handleChainChanged);
     };
-  }, [disconnectWallet]);
+  }, [disconnectWallet, getProvider]);
 
   const value = useMemo<EtherContextType>(
     () => ({
       contractAddress: CONTRACT_ADDRESS,
       isConnected: Boolean(walletAddress),
+      isHydrated,
       walletAddress,
       chainId,
       connectWallet,
@@ -359,6 +379,7 @@ export const EtherContextProvider = ({ children }: { children: ReactNode }) => {
       onProposalExecuted,
       onVoteCast,
       payMaintenance,
+      isHydrated,
       walletAddress,
       createProposal,
       vote,

@@ -99,7 +99,9 @@ contract SocietyDAO {
     function executeProposal(uint256 proposalId) external {
         Proposal storage proposal = proposals[proposalId];
         require(proposal.recipient != address(0), "Proposal not found");
-        require(block.timestamp > proposal.deadline, "Voting still active");
+        bool deadlinePassed = block.timestamp > proposal.deadline;
+        bool unanimousYes = proposal.votesFor > 0 && proposal.votesAgainst == 0;
+        require(deadlinePassed || unanimousYes, "Voting still active");
         require(!proposal.executed, "Already executed");
         require(proposal.votesFor > proposal.votesAgainst, "Proposal rejected");
         require(address(this).balance >= proposal.amount, "Insufficient treasury");

@@ -77,7 +77,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
           {!collapsed && (
             <div className="glass-card p-3 text-xs">
               <p className="text-muted-foreground">Connected Wallet</p>
-              <p className="text-foreground font-mono mt-1">{wallet}</p>
+              <p className="text-foreground font-mono mt-1">{`${wallet.slice(0,10)}..${wallet.slice(38)}`}</p>
             </div>
           )}
           <Button variant="ghost" size="sm" onClick={handleLogout} className={cn("w-full text-muted-foreground", collapsed && "px-2")}>

@@ -18,7 +18,7 @@ import {
   onNotificationsSnapshot,
   saveProposalMetadata,
 } from "./firebase";
-import { ETH_TO_INR } from "./currency";
+import { ETH_TO_INR, inrToETH } from "./currency";
 import type {
   FirebaseNotification,
   FirebaseVendor,
@@ -35,6 +35,29 @@ export const domains = [
   "Security",
   "Governance",
   "Community",
+];
+
+const fallbackResidentsSeed = [
+  {
+    walletAddress: "0x1111111111111111111111111111111111111111",
+    flatNumber: "A-101",
+    name: "Aarav Sharma",
+  },
+  {
+    walletAddress: "0x2222222222222222222222222222222222222222",
+    flatNumber: "A-102",
+    name: "Priya Patel",
+  },
+  {
+    walletAddress: "0x3333333333333333333333333333333333333333",
+    flatNumber: "B-201",
+    name: "Vikram Singh",
+  },
+  {
+    walletAddress: "0x4444444444444444444444444444444444444444",
+    flatNumber: "B-202",
+    name: "Neha Gupta",
+  },
 ];
 
 const resolveProposalStatus = (executed: boolean, deadline: number): ProposalView["status"] => {
@@ -111,7 +134,7 @@ export const useProposals = () => {
           totalVoters: totalVotes,
           createdBy: meta?.createdBy || "Unknown",
           createdAt: meta?.createdAt || new Date(p.deadline * 1000).toISOString(),
-          vendorId: undefined,
+          vendorId: meta?.vendorId || undefined,
           status: resolveProposalStatus(p.executed, p.deadline),
         };
       });
@@ -129,13 +152,14 @@ export const useCreateProposal = () => {
       title: string;
       description: string;
       domain: string;
-      budget: number;
+      budgetINR: number;
       recipient: string;
       deadline: number;
       createdBy: string;
     }) => {
+      const budgetETH = inrToETH(data.budgetINR);
       const { proposalId, txHash } = await createProposal(
-        data.budget,
+        budgetETH,
         data.recipient,
         data.deadline
       );
@@ -294,14 +318,50 @@ export const useResidents = () => {
   return useQuery({
     queryKey: ["residents"],
     queryFn: async (): Promise<ResidentView[]> => {
-      if (!isFirebaseConfigured()) return [];
-
-      const [users, treasury] = await Promise.all([getUsers(), getTreasuryState()]);
+      const [users, treasury, logs] = await Promise.all([
+        isFirebaseConfigured() ? getUsers() : Promise.resolve([]),
+        getTreasuryState(),
+        isFirebaseConfigured() ? getActivityLogs() : Promise.resolve([]),
+      ]);
       const monthlyFeeInr = Number(ethers.formatEther(treasury.monthlyFee)) * ETH_TO_INR;
+      const firebaseResidents = users
+        .filter((u) => u.role === "resident")
+        .map((u) => ({
+          walletAddress: u.walletAddress,
+          flatNumber: u.flatNumber,
+          name: u.name,
+        }));
 
-      const residents = users.filter((u) => u.role === "resident");
+      const observedWallets = logs
+        .filter((l) => l.type === "MAINTENANCE_PAYMENT")
+        .map((l) => l.walletAddress)
+        .filter((w): w is string => Boolean(w))
+        .filter((w) => ethers.isAddress(w));
+
+      const localWallet = localStorage.getItem("ff_wallet");
+      const extraWallets = [
+        ...observedWallets,
+        ...(localWallet && ethers.isAddress(localWallet) ? [localWallet] : []),
+      ];
+
+      const extraResidents = Array.from(new Set(extraWallets)).map((walletAddress, idx) => ({
+        walletAddress,
+        flatNumber: `X-${idx + 1}`,
+        name: `Resident ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`,
+      }));
+
+      const baseResidents = firebaseResidents.length > 0 ? firebaseResidents : fallbackResidentsSeed;
+      const merged = [...baseResidents];
+      const known = new Set(baseResidents.map((r) => r.walletAddress.toLowerCase()));
+      for (const resident of extraResidents) {
+        if (!known.has(resident.walletAddress.toLowerCase())) {
+          merged.push(resident);
+          known.add(resident.walletAddress.toLowerCase());
+        }
+      }
+
       return await Promise.all(
-        residents.map(async (resident) => {
+        merged.map(async (resident) => {
           const payment = await getPaymentStatus(resident.walletAddress);
           const lateFee = payment.paid ? 0 : Math.round((monthlyFeeInr * treasury.penaltyRate) / 100);
 
@@ -535,4 +595,3 @@ export const useVotingHistory = () => {
 };
 
 export { ETH_TO_INR };
-

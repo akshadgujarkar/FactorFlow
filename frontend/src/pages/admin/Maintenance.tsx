@@ -1,4 +1,4 @@
-import { useResidents } from "@/lib/hooks";
+import { useResidents, useTransactions, useTreasuryState } from "@/lib/hooks";
 import { EthDisplay } from "@/components/EthDisplay";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatINR } from "@/lib/currency";
@@ -9,10 +9,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const AdminMaintenance = () => {
   const { data: residents, isLoading } = useResidents();
+  const { data: treasury } = useTreasuryState();
+  const { data: transactions } = useTransactions();
 
   const paid = residents?.filter(r => r.status === "paid") ?? [];
-  const totalCollected = paid.length * 0.01;
+  const totalCollected =
+    transactions?.filter((t) => t.type === "maintenance").reduce((sum, tx) => sum + tx.amount, 0) ??
+    paid.reduce((sum, r) => sum + r.maintenanceDue / ETH_TO_INR, 0);
   const defaulters = residents?.filter(r => r.status === "late") ?? [];
+  const monthlyDueEth = treasury?.monthlyFeeETH ?? 0;
 
   if (isLoading) {
     return (
@@ -60,7 +65,7 @@ const AdminMaintenance = () => {
                   <td className="py-3 font-medium">{r.name}</td>
                   <td className="py-3">{r.flatNumber}</td>
                   <td className="py-3 font-mono text-xs text-muted-foreground">{r.walletAddress}</td>
-                  <td className="py-3"><EthDisplay eth={r.maintenanceDue / ETH_TO_INR} size="sm" /></td>
+                  <td className="py-3"><EthDisplay eth={monthlyDueEth} size="sm" /></td>
                   <td className="py-3">{r.lateFee > 0 ? <span className="text-destructive">{formatINR(r.lateFee)}</span> : "—"}</td>
                   <td className="py-3"><StatusBadge status={r.status} /></td>
                   <td className="py-3 text-muted-foreground">{r.paidDate || "—"}</td>

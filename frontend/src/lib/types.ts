@@ -48,6 +48,7 @@ export interface FirebaseProposalMetadata {
   title: string;
   description: string;
   domain: string;
+  vendorId?: string;
   attachments?: string[];
   createdBy: string;
   createdAt: string;

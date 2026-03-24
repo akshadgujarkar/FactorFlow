@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useProposals, useVendors, useExecuteProposal } from "@/lib/hooks";
+import { useProposals, useVendors, useExecuteProposal, useTreasuryState } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
 import { EthDisplay } from "@/components/EthDisplay";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -9,10 +9,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 const VerificationPage = () => {
   const { data: proposals, isLoading } = useProposals();
   const { data: vendors } = useVendors();
+  const { data: treasury } = useTreasuryState();
   const executeProposal = useExecuteProposal();
   const [localCompleted, setLocalCompleted] = useState<Set<number>>(new Set());
 
-  const activeProposals = proposals?.filter(p => p.vendorId && p.status !== "pending") ?? [];
+  const verificationQueue = proposals?.filter((p) => p.status !== "pending") ?? [];
 
   const markComplete = async (id: number) => {
     await executeProposal.mutateAsync(id);
@@ -36,9 +37,27 @@ const VerificationPage = () => {
       </div>
 
       <div className="space-y-4">
-        {activeProposals.map(p => {
-          const vendor = vendors?.find(v => v.id === p.vendorId);
+        {verificationQueue.length === 0 && (
+          <div className="glass-card p-6 text-sm text-muted-foreground">
+            No proposals available for verification yet.
+          </div>
+        )}
+        {verificationQueue.map(p => {
+          const vendor =
+            vendors?.find(v => v.id === p.vendorId) ||
+            vendors?.find(v => v.wallet.toLowerCase() === p.recipient.toLowerCase());
           const isDone = localCompleted.has(p.id) || p.executed;
+          const totalVotes = p.votesFor + p.votesAgainst;
+          const unanimousYes = totalVotes > 0 && p.votesAgainst === 0;
+          const deadlinePassed = p.status !== "active";
+          const hasTreasuryFunds = (treasury?.balanceETH ?? 0) >= p.amount;
+          const canExecute = !isDone && hasTreasuryFunds && (deadlinePassed || unanimousYes) && p.votesFor > p.votesAgainst;
+          const votePct = totalVotes > 0 ? Math.round((p.votesFor / totalVotes) * 100) : 0;
+          const disabledReason = !hasTreasuryFunds
+            ? "Insufficient treasury funds"
+            : !canExecute
+            ? "Need deadline pass or unanimous YES votes"
+            : "";
           return (
             <div key={p.id} className="glass-card p-6 space-y-4">
               <div className="flex items-start justify-between">
@@ -48,6 +67,9 @@ const VerificationPage = () => {
                     <StatusBadge status={isDone ? "completed" : "active"} />
                   </div>
                   <p className="text-sm text-muted-foreground">Vendor: {vendor?.name ?? "Unknown"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Votes: {p.votesFor} yes / {p.votesAgainst} no ({votePct}% yes)
+                  </p>
                 </div>
                 <EthDisplay eth={p.amount} size="sm" />
               </div>
@@ -56,7 +78,8 @@ const VerificationPage = () => {
                   <Button
                     variant="neon"
                     onClick={() => markComplete(p.id)}
-                    disabled={executeProposal.isPending}
+                    disabled={executeProposal.isPending || !canExecute}
+                    title={disabledReason}
                   >
                     {executeProposal.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                     Mark Complete & Release Funds

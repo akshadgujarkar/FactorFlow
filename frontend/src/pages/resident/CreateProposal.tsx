@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { toast } from "sonner";
-import { ETH_TO_INR } from "@/lib/currency";
+import { ETH_TO_INR, inrToETH, formatETH } from "@/lib/currency";
 
 const CreateProposal = () => {
   const { wallet } = useAuth();
@@ -14,13 +14,13 @@ const CreateProposal = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [domain, setDomain] = useState("");
-  const [budget, setBudget] = useState("");
+  const [budgetINR, setBudgetINR] = useState("");
   const [recipient, setRecipient] = useState("");
   const showDuplicate = title.toLowerCase().includes("solar");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !budget) {
+    if (!title || !budgetINR) {
       toast.error("Title and budget are required");
       return;
     }
@@ -34,7 +34,7 @@ const CreateProposal = () => {
       title,
       description,
       domain,
-      budget: parseFloat(budget),
+      budgetINR: parseFloat(budgetINR),
       recipient: recipient || "0x0000000000000000000000000000000000000000",
       deadline: Math.floor(Date.now() / 1000) + 86400 * 30,
       createdBy: wallet,
@@ -43,7 +43,7 @@ const CreateProposal = () => {
     setTitle("");
     setDescription("");
     setDomain("");
-    setBudget("");
+    setBudgetINR("");
     setRecipient("");
   };
 
@@ -82,9 +82,13 @@ const CreateProposal = () => {
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Budget (ETH) <span className="text-xs text-primary">(On-chain)</span></label>
-          <Input type="number" step="0.0001" placeholder="0.00" value={budget} onChange={e => setBudget(e.target.value)} className="bg-muted/50 border-border" />
-          {budget && <p className="text-xs text-muted-foreground">Rs {(parseFloat(budget) * ETH_TO_INR).toLocaleString("en-IN")}</p>}
+          <label className="text-sm font-medium">Budget (INR) <span className="text-xs text-primary">(Converted to ETH on-chain)</span></label>
+          <Input type="number" step="1" placeholder="0" value={budgetINR} onChange={e => setBudgetINR(e.target.value)} className="bg-muted/50 border-border" />
+          {budgetINR && (
+            <p className="text-xs text-muted-foreground">
+              Contract amount: {formatETH(inrToETH(parseFloat(budgetINR)))} (1 ETH = Rs {ETH_TO_INR.toLocaleString("en-IN")})
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">

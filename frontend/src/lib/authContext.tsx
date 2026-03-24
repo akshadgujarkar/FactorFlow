@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { useEther } from "@/context/EtherContext";
 
 type Role = "resident" | "admin" | null;
 
@@ -21,21 +22,60 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [role, setRole] = useState<Role>(null);
-  const [wallet, setWallet] = useState("");
+  const { walletAddress, isHydrated } = useEther();
+  const [role, setRole] = useState<Role>(() => {
+    const saved = localStorage.getItem("ff_role");
+    return saved === "admin" || saved === "resident" ? saved : null;
+  });
+  const [wallet, setWallet] = useState(() => localStorage.getItem("ff_wallet") || "");
 
   const login = (r: Role, nextWallet: string) => {
     setRole(r);
     setWallet(nextWallet);
+    if (r) localStorage.setItem("ff_role", r);
+    localStorage.setItem("ff_wallet", nextWallet);
   };
 
   const logout = () => {
     setRole(null);
     setWallet("");
+    localStorage.removeItem("ff_role");
+    localStorage.removeItem("ff_wallet");
   };
 
+  useEffect(() => {
+    if (!wallet) return;
+    localStorage.setItem("ff_wallet", wallet);
+  }, [wallet]);
+
+  useEffect(() => {
+    if (!role) {
+      localStorage.removeItem("ff_role");
+      return;
+    }
+    localStorage.setItem("ff_role", role);
+  }, [role]);
+
+  useEffect(() => {
+    if (!isHydrated || !role) return;
+
+    if (!walletAddress) {
+      logout();
+      return;
+    }
+
+    if (wallet && walletAddress.toLowerCase() !== wallet.toLowerCase()) {
+      logout();
+      return;
+    }
+
+    if (!wallet) {
+      setWallet(walletAddress);
+    }
+  }, [isHydrated, role, wallet, walletAddress]);
+
   return (
-    <AuthContext.Provider value={{ role, wallet, isLoggedIn: !!role, login, logout }}>
+    <AuthContext.Provider value={{ role, wallet, isLoggedIn: !!role && !!wallet, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
