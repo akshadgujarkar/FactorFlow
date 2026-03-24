@@ -179,5 +179,34 @@ SocietyDAO is built on principles of:
 > “A housing society that runs like a decentralized financial protocol.”
 
 ---
+## 🧪 Future Enhancements
 
-## 📂 Project Structure (Example)
+- NFT-based resident identity system
+- Multi-society support
+- Cross-chain treasury management
+- Mobile dApp version
+- Reputation scoring system for voters
+
+---
+
+## 📜 License
+
+This project is open-source under the MIT License.
+
+---
+
+## 🤝 Contribution
+
+Contributions are welcome!
+
+- Fork the repo
+- Create feature branch
+- Submit PR with detailed description
+
+---
+
+## ⚡ Final Vision
+
+SocietyDAO aims to redefine how residential societies manage money and governance by turning them into **fully transparent, self-executing decentralized organizations**.
+
+> “From paperwork and trust → to code and consensus.”
