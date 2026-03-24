@@ -1,4 +1,4 @@
-import { formatETH, formatINR, ethToINR } from "@/lib/mockData";
+import { formatETH, formatINR, ethToINR } from "@/lib/currency";
 
 interface EthDisplayProps {
   eth: number;

@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { toast } from "sonner";
+import { ETH_TO_INR } from "@/lib/currency";
 
 const CreateProposal = () => {
   const { wallet } = useAuth();
@@ -24,17 +25,26 @@ const CreateProposal = () => {
       return;
     }
 
+    if (!wallet) {
+      toast.error("Connect wallet first");
+      return;
+    }
+
     await createProposal.mutateAsync({
       title,
       description,
       domain,
       budget: parseFloat(budget),
       recipient: recipient || "0x0000000000000000000000000000000000000000",
-      deadline: Math.floor(Date.now() / 1000) + 86400 * 30, // 30 days
+      deadline: Math.floor(Date.now() / 1000) + 86400 * 30,
       createdBy: wallet,
     });
 
-    setTitle(""); setDescription(""); setDomain(""); setBudget(""); setRecipient("");
+    setTitle("");
+    setDescription("");
+    setDomain("");
+    setBudget("");
+    setRecipient("");
   };
 
   return (
@@ -42,7 +52,7 @@ const CreateProposal = () => {
       <div>
         <h1 className="text-3xl font-display font-bold">Create Proposal</h1>
         <p className="text-muted-foreground mt-1">
-          Metadata → <span className="text-orange-400 text-xs font-mono">Firebase 🔥</span> • Core data → <span className="text-primary text-xs font-mono">on-chain ⛓</span>
+          Metadata in Firebase and core proposal values on-chain.
         </p>
       </div>
 
@@ -73,8 +83,8 @@ const CreateProposal = () => {
 
         <div className="space-y-2">
           <label className="text-sm font-medium">Budget (ETH) <span className="text-xs text-primary">(On-chain)</span></label>
-          <Input type="number" step="0.01" placeholder="0.00" value={budget} onChange={e => setBudget(e.target.value)} className="bg-muted/50 border-border" />
-          {budget && <p className="text-xs text-muted-foreground">≈ ₹{(parseFloat(budget) * 200000).toLocaleString("en-IN")}</p>}
+          <Input type="number" step="0.0001" placeholder="0.00" value={budget} onChange={e => setBudget(e.target.value)} className="bg-muted/50 border-border" />
+          {budget && <p className="text-xs text-muted-foreground">Rs {(parseFloat(budget) * ETH_TO_INR).toLocaleString("en-IN")}</p>}
         </div>
 
         <div className="space-y-2">
@@ -91,7 +101,7 @@ const CreateProposal = () => {
         </Button>
 
         <p className="text-xs text-center text-muted-foreground">
-          This will create an on-chain proposal (amount + recipient) and store metadata in Firebase
+          This submits a contract transaction and stores off-chain metadata in Firebase.
         </p>
       </form>
     </div>

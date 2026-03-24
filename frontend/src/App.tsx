@@ -1,11 +1,9 @@
-import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/lib/authContext";
 import { AppLayout } from "@/components/AppLayout";
-import { initEventSync } from "@/lib/eventSync";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
@@ -58,16 +56,9 @@ const AppRoutes = () => (
 );
 
 const App = () => {
-  useEffect(() => {
-    const cleanup = initEventSync();
-    console.log("[App] Event sync initialized — bridging blockchain → Firebase");
-    return cleanup;
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <EtherContextProvider>
-
         <TooltipProvider>
           <Sonner />
           <AuthProvider>

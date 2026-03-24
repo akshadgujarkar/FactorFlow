@@ -2,14 +2,30 @@ import { useAuth } from "@/lib/authContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Hexagon, User, Shield, Wallet } from "lucide-react";
+import { useEther } from "@/context/EtherContext";
+import { toast } from "sonner";
 
 const LoginPage = () => {
   const { login } = useAuth();
+  const { connectWallet, walletAddress, isConnected } = useEther();
   const navigate = useNavigate();
 
   const handleLogin = (role: "resident" | "admin") => {
-    login(role);
+    if (!walletAddress) {
+      toast.error("Connect your wallet first");
+      return;
+    }
+    login(role, walletAddress);
     navigate(role === "admin" ? "/admin/dashboard" : "/resident/dashboard");
+  };
+
+  const handleConnect = async () => {
+    try {
+      await connectWallet();
+      toast.success("Wallet connected");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Wallet connection failed");
+    }
   };
 
   return (
@@ -26,13 +42,22 @@ const LoginPage = () => {
         </div>
 
         <div className="glass-card p-6 space-y-4">
-          <Button variant="glass" size="lg" className="w-full justify-start gap-3 h-14">
+          <Button
+            variant="glass"
+            size="lg"
+            className="w-full justify-start gap-3 h-14"
+            onClick={handleConnect}
+          >
             <Wallet className="h-5 w-5 text-primary" />
             <div className="text-left">
               <p className="font-medium">Connect MetaMask</p>
-              <p className="text-xs text-muted-foreground">0x1a2b...3c4d</p>
+              <p className="text-xs text-muted-foreground">
+                {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "Not connected"}
+              </p>
             </div>
-            <span className="ml-auto text-xs text-neon-green">Connected</span>
+            <span className="ml-auto text-xs text-neon-green">
+              {isConnected ? "Connected" : "Connect"}
+            </span>
           </Button>
 
           <div className="border-t border-border my-4" />

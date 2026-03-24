@@ -149,7 +149,7 @@ export const getNotifications = async (
   const baseQuery = wallet
     ? query(
         collection(db, "notifications"),
-        where("walletAddress", "==", wallet),
+        where("walletAddress", "in", [wallet, "all"]),
         orderBy("timestamp", "desc")
       )
     : query(collection(db, "notifications"), orderBy("timestamp", "desc"));
@@ -201,7 +201,7 @@ export const onNotificationsSnapshot = (
   if (!db) return () => {};
   const q = query(
     collection(db, "notifications"),
-    where("walletAddress", "==", wallet),
+    where("walletAddress", "in", [wallet, "all"]),
     orderBy("timestamp", "desc")
   );
   return onSnapshot(q, (snap: QuerySnapshot<DocumentData>) => {

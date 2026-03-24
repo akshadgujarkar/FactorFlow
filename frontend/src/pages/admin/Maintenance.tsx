@@ -1,7 +1,8 @@
 import { useResidents } from "@/lib/hooks";
 import { EthDisplay } from "@/components/EthDisplay";
 import { StatusBadge } from "@/components/StatusBadge";
-import { formatINR } from "@/lib/mockData";
+import { formatINR } from "@/lib/currency";
+import { ETH_TO_INR } from "@/lib/currency";
 import { Users, AlertTriangle } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -33,7 +34,7 @@ const AdminMaintenance = () => {
       </div>
 
       <div className="grid sm:grid-cols-3 gap-4">
-        <StatCard title="Total Collected" value={`${totalCollected.toFixed(2)} ETH`} subtitle={formatINR(totalCollected * 200000)} icon={<Users className="h-5 w-5" />} />
+        <StatCard title="Total Collected" value={`${totalCollected.toFixed(2)} ETH`} subtitle={formatINR(totalCollected * ETH_TO_INR)} icon={<Users className="h-5 w-5" />} />
         <StatCard title="Paid Residents" value={`${paid.length} / ${residents?.length ?? 0}`} icon={<Users className="h-5 w-5" />} />
         <StatCard title="Defaulters" value={`${defaulters.length}`} subtitle="With late fees" icon={<AlertTriangle className="h-5 w-5" />} />
       </div>
@@ -59,7 +60,7 @@ const AdminMaintenance = () => {
                   <td className="py-3 font-medium">{r.name}</td>
                   <td className="py-3">{r.flatNumber}</td>
                   <td className="py-3 font-mono text-xs text-muted-foreground">{r.walletAddress}</td>
-                  <td className="py-3"><EthDisplay eth={r.maintenanceDue / 200000} size="sm" /></td>
+                  <td className="py-3"><EthDisplay eth={r.maintenanceDue / ETH_TO_INR} size="sm" /></td>
                   <td className="py-3">{r.lateFee > 0 ? <span className="text-destructive">{formatINR(r.lateFee)}</span> : "—"}</td>
                   <td className="py-3"><StatusBadge status={r.status} /></td>
                   <td className="py-3 text-muted-foreground">{r.paidDate || "—"}</td>

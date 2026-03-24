@@ -6,7 +6,7 @@ interface AuthContextType {
   role: Role;
   wallet: string;
   isLoggedIn: boolean;
-  login: (role: Role) => void;
+  login: (role: Role, wallet: string) => void;
   logout: () => void;
 }
 
@@ -14,7 +14,7 @@ const AuthContext = createContext<AuthContextType>({
   role: null,
   wallet: "",
   isLoggedIn: false,
-  login: () => {},
+  login: () => undefined,
   logout: () => {},
 });
 
@@ -22,10 +22,17 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [role, setRole] = useState<Role>(null);
-  const wallet = "0x1a2b...3c4d";
+  const [wallet, setWallet] = useState("");
 
-  const login = (r: Role) => setRole(r);
-  const logout = () => setRole(null);
+  const login = (r: Role, nextWallet: string) => {
+    setRole(r);
+    setWallet(nextWallet);
+  };
+
+  const logout = () => {
+    setRole(null);
+    setWallet("");
+  };
 
   return (
     <AuthContext.Provider value={{ role, wallet, isLoggedIn: !!role, login, logout }}>

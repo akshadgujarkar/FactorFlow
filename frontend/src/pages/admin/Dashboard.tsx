@@ -1,11 +1,8 @@
-import { useEffect } from "react";
 import { StatCard } from "@/components/StatCard";
-import { EthDisplay } from "@/components/EthDisplay";
-import { StatusBadge } from "@/components/StatusBadge";
 import { useAnalytics, useResidents, useProposals } from "@/lib/hooks";
 import { Wallet, Users, FileText, AlertTriangle, CheckCircle, TrendingUp } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { formatINR } from "@/lib/mockData";
+import { formatINR, ETH_TO_INR } from "@/lib/currency";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const AdminDashboard = () => {
@@ -44,7 +41,7 @@ const AdminDashboard = () => {
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <StatCard title="Treasury Balance" value={`${analytics?.treasuryBalance.toFixed(2)} ETH`} subtitle={formatINR(analytics?.treasuryBalanceINR ?? 0)} icon={<Wallet className="h-5 w-5" />} trend={{ value: "+12%", positive: true }} />
         <StatCard title="Total Residents" value={`${residents?.length ?? 0}`} subtitle="Active members" icon={<Users className="h-5 w-5" />} />
-        <StatCard title="Funds Collected" value={`${totalCollected.toFixed(2)} ETH`} subtitle={formatINR(totalCollected * 200000)} icon={<TrendingUp className="h-5 w-5" />} />
+        <StatCard title="Funds Collected" value={`${totalCollected.toFixed(2)} ETH`} subtitle={formatINR(totalCollected * ETH_TO_INR)} icon={<TrendingUp className="h-5 w-5" />} />
         <StatCard title="Pending Payments" value={`${pendingCount}`} subtitle="Residents overdue" icon={<AlertTriangle className="h-5 w-5" />} />
         <StatCard title="Active Proposals" value={`${activeProposals}`} subtitle="Awaiting votes" icon={<FileText className="h-5 w-5" />} />
         <StatCard title="Completed Works" value={`${completedProposals}`} subtitle="This quarter" icon={<CheckCircle className="h-5 w-5" />} />

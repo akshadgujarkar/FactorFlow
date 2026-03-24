@@ -8,6 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useEther } from "@/context/EtherContext";
 
 const residentLinks = [
   { to: "/resident/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -28,12 +29,14 @@ const adminLinks = [
 
 export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { role, wallet, logout } = useAuth();
+  const { disconnectWallet } = useEther();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const links = role === "admin" ? adminLinks : residentLinks;
 
   const handleLogout = () => {
     logout();
+    disconnectWallet();
     navigate("/");
   };
 

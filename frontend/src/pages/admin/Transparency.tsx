@@ -1,10 +1,12 @@
-import { useTransactions } from "@/lib/hooks";
+import { useTransactions, useTreasuryState } from "@/lib/hooks";
 import { EthDisplay } from "@/components/EthDisplay";
 import { ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ETH_TO_INR } from "@/lib/currency";
 
 const TransparencyPage = () => {
   const { data: transactions, isLoading } = useTransactions();
+  const { data: treasury } = useTreasuryState();
 
   if (isLoading) {
     return (
@@ -17,12 +19,13 @@ const TransparencyPage = () => {
 
   const inflow = transactions?.filter(t => t.type === "maintenance").reduce((s, t) => s + t.amount, 0) ?? 0;
   const outflow = transactions?.filter(t => t.type === "payment").reduce((s, t) => s + t.amount, 0) ?? 0;
+  const netBalance = treasury?.balanceETH ?? inflow - outflow;
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-display font-bold">Transparency Panel</h1>
-        <p className="text-muted-foreground mt-1">Activity logs from <span className="text-orange-400 text-xs font-mono">Firebase 🔥</span> • Verified by <span className="text-primary text-xs font-mono">blockchain ⛓</span></p>
+        <p className="text-muted-foreground mt-1">Activity logs from Firebase with contract-backed treasury totals.</p>
       </div>
 
       <div className="glass-card p-6">
@@ -40,7 +43,7 @@ const TransparencyPage = () => {
               </tr>
             </thead>
             <tbody>
-              {transactions?.map(tx => (
+              {(transactions ?? []).map(tx => (
                 <tr key={tx.id} className="border-b border-border/50 hover:bg-muted/20">
                   <td className="py-3">
                     <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded ${tx.type === "maintenance" ? "bg-neon-green/10 text-neon-green" : "bg-primary/10 text-primary"}`}>
@@ -66,17 +69,17 @@ const TransparencyPage = () => {
           <div className="p-4 rounded-lg bg-neon-green/5 border border-neon-green/20 text-center">
             <p className="text-xs text-muted-foreground">Total Inflow</p>
             <p className="text-xl font-display font-bold text-neon-green mt-1">{inflow.toFixed(2)} ETH</p>
-            <p className="text-xs text-muted-foreground">₹{(inflow * 200000).toLocaleString("en-IN")}</p>
+            <p className="text-xs text-muted-foreground">Rs {(inflow * ETH_TO_INR).toLocaleString("en-IN")}</p>
           </div>
           <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 text-center">
             <p className="text-xs text-muted-foreground">Total Outflow</p>
             <p className="text-xl font-display font-bold text-primary mt-1">{outflow.toFixed(2)} ETH</p>
-            <p className="text-xs text-muted-foreground">₹{(outflow * 200000).toLocaleString("en-IN")}</p>
+            <p className="text-xs text-muted-foreground">Rs {(outflow * ETH_TO_INR).toLocaleString("en-IN")}</p>
           </div>
           <div className="p-4 rounded-lg bg-secondary/5 border border-secondary/20 text-center">
-            <p className="text-xs text-muted-foreground">Net Balance</p>
-            <p className="text-xl font-display font-bold text-secondary mt-1">{(inflow - outflow + 2.5).toFixed(2)} ETH</p>
-            <p className="text-xs text-muted-foreground">₹{((inflow - outflow + 2.5) * 200000).toLocaleString("en-IN")}</p>
+            <p className="text-xs text-muted-foreground">Treasury Balance</p>
+            <p className="text-xl font-display font-bold text-secondary mt-1">{netBalance.toFixed(2)} ETH</p>
+            <p className="text-xs text-muted-foreground">Rs {(netBalance * ETH_TO_INR).toLocaleString("en-IN")}</p>
           </div>
         </div>
       </div>

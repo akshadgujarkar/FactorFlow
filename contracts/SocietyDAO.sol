@@ -1,200 +1,151 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.28;
 
 contract SocietyDAO {
-
-    // ============================================================
-    // STRUCTS
-    // ============================================================
-
     struct Proposal {
-        uint id;
-        string description;
-        uint amount;
+        uint256 amount;
         address payable recipient;
-        uint deadline;
-        uint yesVotes;
-        uint noVotes;
+        uint256 deadline;
         bool executed;
+        uint256 votesFor;
+        uint256 votesAgainst;
+        address proposer;
     }
 
-    struct Payment {
-        uint amount;
-        uint timestamp;
+    struct PaymentRecord {
         bool paid;
+        uint256 amount;
+        uint256 timestamp;
     }
 
-    // ============================================================
-    // STATE VARIABLES
-    // ============================================================
+    uint256 public monthlyFee;
+    uint256 public penaltyRate;
+    uint256 public proposalCount;
 
-    address public admin;
+    mapping(uint256 => Proposal) private proposals;
+    mapping(uint256 => mapping(address => bool)) private votes;
+    mapping(address => PaymentRecord) private payments;
 
-    uint public monthlyFee = 0.01 ether;
-    uint public penaltyRate = 5; // 5% daily penalty after deadline
+    event MaintenancePaid(address indexed user, uint256 amount);
+    event ProposalCreated(uint256 indexed proposalId);
+    event VoteCast(address indexed voter, uint256 indexed proposalId, bool support);
+    event ProposalExecuted(uint256 indexed proposalId);
 
-    uint public proposalCount;
-
-    mapping(uint => Proposal) public proposals;
-    mapping(uint => mapping(address => bool)) public hasVoted;
-    mapping(address => Payment) public payments;
-    mapping(address => bool) public isResident;
-
-    uint public totalResidents;
-
-    // ============================================================
-    // EVENTS
-    // ============================================================
-
-    event MaintenancePaid(address indexed user, uint amount);
-    event ProposalCreated(uint indexed proposalId);
-    event VoteCast(address indexed voter, uint proposalId, bool support);
-    event ProposalExecuted(uint indexed proposalId);
-
-    // ============================================================
-    // CONSTRUCTOR
-    // ============================================================
-
-    constructor() {
-        admin = msg.sender;
+    constructor(uint256 _monthlyFee, uint256 _penaltyRate) {
+        require(_monthlyFee > 0, "Monthly fee must be > 0");
+        monthlyFee = _monthlyFee;
+        penaltyRate = _penaltyRate;
     }
 
-    // ============================================================
-    // MODIFIERS
-    // ============================================================
-
-    modifier onlyResident() {
-        require(isResident[msg.sender], "Not a resident");
-        _;
-    }
-
-    modifier onlyAdmin() {
-        require(msg.sender == admin, "Not admin");
-        _;
-    }
-
-    // ============================================================
-    // RESIDENT MANAGEMENT
-    // ============================================================
-
-    function addResident(address _user) external onlyAdmin {
-        require(!isResident[_user], "Already resident");
-        isResident[_user] = true;
-        totalResidents++;
-    }
-
-    // ============================================================
-    // TREASURY (RECEIVE FUNDS)
-    // ============================================================
-
-    receive() external payable {}
-
-    function getBalance() public view returns (uint) {
+    function getBalance() external view returns (uint256) {
         return address(this).balance;
     }
 
-    // ============================================================
-    // MAINTENANCE PAYMENT LOGIC
-    // ============================================================
+    function payMaintenance() external payable {
+        require(msg.value >= monthlyFee, "Insufficient payment");
 
-    function payMaintenance() external payable onlyResident {
-        uint requiredAmount = getDynamicFee(msg.sender);
-
-        require(msg.value >= requiredAmount, "Insufficient payment");
-
-        payments[msg.sender] = Payment({
+        payments[msg.sender] = PaymentRecord({
+            paid: true,
             amount: msg.value,
-            timestamp: block.timestamp,
-            paid: true
+            timestamp: block.timestamp
         });
 
         emit MaintenancePaid(msg.sender, msg.value);
     }
 
-    // 🔥 Penalty logic (your key feature)
-    function getDynamicFee(address user) public view returns (uint) {
-        Payment memory p = payments[user];
-
-        if (!p.paid) return monthlyFee;
-
-        uint daysLate = (block.timestamp - p.timestamp) / 1 days;
-
-        if (daysLate <= 30) return monthlyFee;
-
-        uint extraDays = daysLate - 30;
-
-        return monthlyFee + ((monthlyFee * penaltyRate * extraDays) / 100);
-    }
-
-    // ============================================================
-    // PROPOSALS
-    // ============================================================
-
     function createProposal(
-        string memory _desc,
-        uint _amount,
-        address payable _recipient,
-        uint _duration
-    ) external onlyResident returns (uint) {
+        uint256 amount,
+        address recipient,
+        uint256 deadline
+    ) external returns (uint256) {
+        require(recipient != address(0), "Invalid recipient");
+        require(amount > 0, "Amount must be > 0");
+        require(deadline > block.timestamp, "Deadline must be in future");
 
-        proposalCount++;
+        proposalCount += 1;
 
         proposals[proposalCount] = Proposal({
-            id: proposalCount,
-            description: _desc,
-            amount: _amount,
-            recipient: _recipient,
-            deadline: block.timestamp + _duration,
-            yesVotes: 0,
-            noVotes: 0,
-            executed: false
+            amount: amount,
+            recipient: payable(recipient),
+            deadline: deadline,
+            executed: false,
+            votesFor: 0,
+            votesAgainst: 0,
+            proposer: msg.sender
         });
 
         emit ProposalCreated(proposalCount);
-
         return proposalCount;
     }
 
-    // ============================================================
-    // VOTING SYSTEM
-    // ============================================================
+    function vote(uint256 proposalId, bool support) external {
+        Proposal storage proposal = proposals[proposalId];
+        require(proposal.recipient != address(0), "Proposal not found");
+        require(block.timestamp <= proposal.deadline, "Voting ended");
+        require(!proposal.executed, "Already executed");
+        require(!votes[proposalId][msg.sender], "Already voted");
 
-    function vote(uint _proposalId, bool support) external onlyResident {
-
-        Proposal storage p = proposals[_proposalId];
-
-        require(block.timestamp < p.deadline, "Voting ended");
-        require(!hasVoted[_proposalId][msg.sender], "Already voted");
-
-        hasVoted[_proposalId][msg.sender] = true;
+        votes[proposalId][msg.sender] = true;
 
         if (support) {
-            p.yesVotes++;
+            proposal.votesFor += 1;
         } else {
-            p.noVotes++;
+            proposal.votesAgainst += 1;
         }
 
-        emit VoteCast(msg.sender, _proposalId, support);
+        emit VoteCast(msg.sender, proposalId, support);
     }
 
-    // ============================================================
-    // EXECUTION LOGIC
-    // ============================================================
+    function executeProposal(uint256 proposalId) external {
+        Proposal storage proposal = proposals[proposalId];
+        require(proposal.recipient != address(0), "Proposal not found");
+        require(block.timestamp > proposal.deadline, "Voting still active");
+        require(!proposal.executed, "Already executed");
+        require(proposal.votesFor > proposal.votesAgainst, "Proposal rejected");
+        require(address(this).balance >= proposal.amount, "Insufficient treasury");
 
-    function executeProposal(uint _proposalId) external {
+        proposal.executed = true;
+        (bool ok, ) = proposal.recipient.call{value: proposal.amount}("");
+        require(ok, "Transfer failed");
 
-        Proposal storage p = proposals[_proposalId];
+        emit ProposalExecuted(proposalId);
+    }
 
-        require(block.timestamp >= p.deadline, "Voting not ended");
-        require(!p.executed, "Already executed");
+    function getProposal(
+        uint256 id
+    )
+        external
+        view
+        returns (
+            uint256 amount,
+            address recipient,
+            uint256 deadline,
+            bool executed,
+            uint256 votesFor,
+            uint256 votesAgainst
+        )
+    {
+        Proposal memory proposal = proposals[id];
+        require(proposal.recipient != address(0), "Proposal not found");
 
-        require(p.yesVotes > p.noVotes, "Not approved");
-        require(address(this).balance >= p.amount, "Insufficient funds");
+        return (
+            proposal.amount,
+            proposal.recipient,
+            proposal.deadline,
+            proposal.executed,
+            proposal.votesFor,
+            proposal.votesAgainst
+        );
+    }
 
-        p.executed = true;
+    function getPaymentStatus(
+        address user
+    ) external view returns (bool paid, uint256 amount, uint256 timestamp) {
+        PaymentRecord memory payment = payments[user];
+        return (payment.paid, payment.amount, payment.timestamp);
+    }
 
-        p.recipient.transfer(p.amount);
-
-        emit ProposalExecuted(_proposalId);
+    function hasVoted(uint256 proposalId, address voter) external view returns (bool) {
+        return votes[proposalId][voter];
     }
 }
