@@ -22,6 +22,10 @@ type MaintenancePaidListener = (user: string, amount: bigint, txHash: string) =>
 type ProposalCreatedListener = (proposalId: number, txHash: string) => void;
 type VoteCastListener = (voter: string, proposalId: number, support: boolean, txHash: string) => void;
 type ProposalExecutedListener = (proposalId: number, txHash: string) => void;
+type EthereumProviderWithEvents = Eip1193Provider & {
+  on?: (event: string, listener: (...args: any[]) => void) => void;
+  removeListener?: (event: string, listener: (...args: any[]) => void) => void;
+};
 
 interface EtherContextType {
   contractAddress: string;
@@ -63,6 +67,7 @@ declare global {
 const EtherContext = createContext<EtherContextType | null>(null);
 
 const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || "";
+const SOCIETY_DAO_ABI = (SocietyDAO as { abi: InterfaceAbi }).abi;
 
 const toOnChainProposal = (id: number, p: any): OnChainProposal => ({
   id,
@@ -289,7 +294,7 @@ export const EtherContextProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!window.ethereum) return;
 
-    const eth = window.ethereum as Eip1193Provider;
+    const eth = window.ethereum as EthereumProviderWithEvents;
     const handleAccountsChanged = (accounts: string[]) => {
       if (!accounts.length) {
         disconnectWallet();
@@ -368,5 +373,3 @@ export const useEther = () => {
   if (!ctx) throw new Error("useEther must be used within EtherContextProvider");
   return ctx;
 };
-const SOCIETY_DAO_ABI = (SocietyDAO as { abi: InterfaceAbi }).abi;
-
